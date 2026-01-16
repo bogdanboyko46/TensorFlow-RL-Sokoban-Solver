@@ -58,7 +58,7 @@ def is_possible() -> bool:
     global grid, player, blocksComp
     n = len(grid)
     m = len(grid[0])
-    if grid[0][0] == 'b' or grid[n-1][0] == 'b' or grid[n-1][m-1] == 'b' or grid[0][m-1] == 'b':
+    if 'b' in (grid[0][0], grid[n-1][0], grid[n-1][m-1], grid[0][m-1]):
         return False
 
     hole = block = 0

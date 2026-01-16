@@ -1,14 +1,16 @@
-import tf_agents.environments.suite_gym as suite_gym
+import numpy as np
 import tensorflow as tf
-from tf_agents.networks import sequential
-from tf_agents.agents.dqn import dqn_agent
-from tf_agents.optimizers import AdamOptimizer
-from tf_agents.environments import py_environment
+
+from tf_agents.environments import py_environment, suite_gym
 from tf_agents.specs import array_spec
 from tf_agents.trajectories import time_step as ts
-import numpy as np
+
+from tf_agents.networks import sequential
+from tf_agents.agents.dqn import dqn_agent
+from tf_agents.networks import q_network
 
 print("TensorFlow version:", tf.__version__)
+env = suite_gym.load("CartPole-v1")
 
 # Define a simple Q-network
 q_net = q_network.QNetwork(
@@ -18,7 +20,7 @@ q_net = q_network.QNetwork(
 )
 
 # initialize learning agent
-optimizer = AdamOptimizer(learning_rate=1e-3)
+optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 agent = dqn_agent.DqnAgent(
     env.time_step_spec(),
     env.action_spec(),
