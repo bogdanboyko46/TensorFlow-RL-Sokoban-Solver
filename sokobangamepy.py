@@ -26,6 +26,7 @@ RED = (200, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
+CYAN = (0, 255, 255)
 
 # Size of each player block
 BLOCK_SIZE = 80
@@ -42,8 +43,18 @@ class Sokoban:
 
         # Initial player position (center of screen)
         self.player = Point(0,0)
-        self.block = Point(BLOCK_SIZE, BLOCK_SIZE)
-        self.hole = Point(320, 320)
+
+        block1 = Point(BLOCK_SIZE, BLOCK_SIZE)
+        block2 = Point(BLOCK_SIZE * 4, BLOCK_SIZE)
+        self.blocks = set()
+        self.blocks.add(block1)
+        self.blocks.add(block2)
+
+        hole1 = Point(240, 400)
+        hole2 = Point(320, w- BLOCK_SIZE * 4)
+        self.holes = set()
+        self.holes.add(hole1)
+        self.holes.add(hole2)
 
 
 
@@ -71,21 +82,24 @@ class Sokoban:
         # Clear screen
         self.display.fill(BLACK)
 
-        b_pt = self.block
-        pygame.draw.rect(self.display, RED,
-                         pygame.Rect(b_pt.x, b_pt.y, BLOCK_SIZE, BLOCK_SIZE))
-
-        h_pt = self.hole
-        if h_pt != b_pt:
-            pygame.draw.rect(self.display, WHITE,
-                             pygame.Rect(h_pt.x, h_pt.y, BLOCK_SIZE, BLOCK_SIZE))
-        else:
-            pygame.draw.rect(self.display, GREEN,
-                             pygame.Rect(h_pt.x, h_pt.y, BLOCK_SIZE, BLOCK_SIZE))
-
         p_pt = self.player
         pygame.draw.rect(self.display, BLUE,
                          pygame.Rect(p_pt.x, p_pt.y, BLOCK_SIZE, BLOCK_SIZE))
+        for b_pt in self.blocks:
+            pygame.draw.rect(self.display, RED,
+                             pygame.Rect(b_pt.x, b_pt.y, BLOCK_SIZE, BLOCK_SIZE))
+
+        for h_pt in self.holes:
+            if h_pt in self.blocks:
+                pygame.draw.rect(self.display, GREEN,
+                                 pygame.Rect(h_pt.x, h_pt.y, BLOCK_SIZE, BLOCK_SIZE))
+            elif h_pt == p_pt:
+                pygame.draw.rect(self.display, CYAN,
+                                 pygame.Rect(h_pt.x, h_pt.y, BLOCK_SIZE, BLOCK_SIZE))
+            else:
+                pygame.draw.rect(self.display, WHITE,
+                                 pygame.Rect(h_pt.x, h_pt.y, BLOCK_SIZE, BLOCK_SIZE))
+
 
 
         # Update the screen
@@ -96,28 +110,41 @@ class Sokoban:
         y = self.player.y
 
         if direction == Direction.RIGHT and (x + BLOCK_SIZE) < self.w:
-            if self.block.x == x + BLOCK_SIZE and self.block.y == y:
-                if x + BLOCK_SIZE * 2 >= self.w:
+            new_x = x + BLOCK_SIZE
+            if Point(new_x, y) in self.blocks:
+                # Checks if block cant be pushed (out of bounds, or another block to blocks right)
+                if new_x + BLOCK_SIZE >= self.w or Point(new_x + BLOCK_SIZE, y) in self.blocks:
                     return
-                self.block = Point(self.block.x + BLOCK_SIZE, self.block.y)
+                self.blocks.remove((new_x, y))
+                self.blocks.add(Point(new_x + BLOCK_SIZE, y))
             x += BLOCK_SIZE
         elif direction == Direction.LEFT and (x - BLOCK_SIZE) >= 0:
-            if self.block.x == x - BLOCK_SIZE and self.block.y == y:
-                if x - BLOCK_SIZE * 2 < 0:
+            new_x = x - BLOCK_SIZE
+            if Point(new_x, y) in self.blocks:
+                # Checks if block cant be pushed (out of bounds, or another block to blocks left)
+                if new_x - BLOCK_SIZE < 0 or Point(new_x - BLOCK_SIZE, y) in self.blocks:
                     return
-                self.block = Point(self.block.x - BLOCK_SIZE, self.block.y)
+                self.blocks.remove((new_x, y))
+                self.blocks.add(Point(new_x - BLOCK_SIZE, y))
             x -= BLOCK_SIZE
+
         elif direction == Direction.DOWN and (y + BLOCK_SIZE) < self.h:
-            if self.block.x == x and self.block.y == y + BLOCK_SIZE:
-                if y + BLOCK_SIZE * 2 >= self.w:
+            new_y = y + BLOCK_SIZE
+            if Point(x, new_y) in self.blocks:
+                # Checks if block cant be pushed (out of bounds, or another block to blocks left)
+                if new_y + BLOCK_SIZE >= self.w or Point(x, new_y + BLOCK_SIZE) in self.blocks:
                     return
-                self.block = Point(self.block.x, self.block.y + BLOCK_SIZE)
+                self.blocks.remove((x, new_y))
+                self.blocks.add(Point(x, new_y + BLOCK_SIZE))
             y += BLOCK_SIZE
         elif direction == Direction.UP and (y - BLOCK_SIZE) >= 0:
-            if self.block.x == x and self.block.y == y - BLOCK_SIZE:
-                if y - BLOCK_SIZE * 2 < 0:
+            new_y = y - BLOCK_SIZE
+            if Point(x, new_y) in self.blocks:
+                # Checks if block cant be pushed (out of bounds, or another block to blocks left)
+                if new_y - BLOCK_SIZE < 0 or Point(x, new_y - BLOCK_SIZE) in self.blocks:
                     return
-                self.block = Point(self.block.x, self.block.y - BLOCK_SIZE)
+                self.blocks.remove((x, new_y))
+                self.blocks.add(Point(x, new_y - BLOCK_SIZE))
             y -= BLOCK_SIZE
 
         self.player = Point(x, y)
