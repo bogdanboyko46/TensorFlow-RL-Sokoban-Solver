@@ -22,7 +22,7 @@ class Agent:
 
         # State array is as follows:
         """"
-        A ‘state’ array consisting of boolean values: (4 + n*5 + m*4)
+        A ‘state’ array consisting of # boolean values (0, 1): (4 + n*5 + m*4)
 
         N = amount of blocks
         M = amount of holes
