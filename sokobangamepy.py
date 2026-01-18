@@ -1,16 +1,13 @@
 import time
-
-import pygame              # Game library for graphics, input, and timing
-import random              # Used to randomly place food
-from enum import Enum      # Used for direction enum
-from collections import namedtuple  # Lightweight data structure for points
+import pygame
+import random
+from enum import Enum
+from collections import namedtuple
 
 # Initialize pygame modules
 pygame.init()
 
-# Load font for displaying score
 font = pygame.font.Font('arial.ttf', 25)
-# font = pygame.font.SysFont('arial', 25)  # Alternative system font
 
 # Enum for player movement directions
 class Direction(Enum):
@@ -172,7 +169,6 @@ if __name__ == '__main__':
 
     while True:
         game = Sokoban()
-
         # Game loop
         while True:
             if game.play_step():
