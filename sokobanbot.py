@@ -102,6 +102,7 @@ class Sokoban:
                 if new_pos in self.holes:
                     self.in_hole += 1
             x += BLOCK_SIZE
+
         elif direction == Direction.LEFT and self.can_move_left():
             if Point(x - BLOCK_SIZE, y) in self.blocks:
                 old_pos = Point(x - BLOCK_SIZE, y)
@@ -113,6 +114,7 @@ class Sokoban:
                 if new_pos in self.holes:
                     self.in_hole += 1
             x -= BLOCK_SIZE
+
         elif direction == Direction.DOWN and self.can_move_down():
             if Point(x, y + BLOCK_SIZE) in self.blocks:
                 old_pos = Point(x, y + BLOCK_SIZE)
