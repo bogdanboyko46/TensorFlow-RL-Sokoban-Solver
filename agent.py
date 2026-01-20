@@ -3,7 +3,7 @@ import time
 import torch
 import random
 import numpy as np
-from sokobangamepy import Sokoban
+from sokobanhuman import Sokoban
 from collections import deque
 
 MAX_MEMORY = 100_000

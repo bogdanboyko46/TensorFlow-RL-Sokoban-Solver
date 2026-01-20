@@ -9,12 +9,14 @@ pygame.init()
 
 font = pygame.font.Font('arial.ttf', 25)
 
+
 # Enum for player movement directions
 class Direction(Enum):
     RIGHT = 1
     LEFT = 2
     UP = 3
     DOWN = 4
+
 
 # Point structure to store x and y coordinates
 Point = namedtuple('Point', 'x, y')
@@ -31,6 +33,7 @@ PINK = (255, 0, 255)
 # Size of each player block
 BLOCK_SIZE = 80
 
+
 class Sokoban:
     def __init__(self, w=720, h=720):
         # Screen width and height
@@ -42,7 +45,7 @@ class Sokoban:
         pygame.display.set_caption('Sokoban')
 
         # Initial player position (center of screen)
-        self.player = Point(0,0)
+        self.player = Point(0, 0)
 
         self.blocks = set()
         while len(self.blocks) < 3:
@@ -58,15 +61,8 @@ class Sokoban:
             if not Point(x, y) in self.holes and not Point(x, y) in self.blocks and Point(x, y) != self.player:
                 self.holes.add(Point(x, y))
 
-    def reset(self):
 
-        # TODO: do this function
-        
-        pass
-
-    def play_step(self, move=None):
-        # TODO: return respective vars: reward, game_over, game_win, configure parameters to accept action
-        
+    def play_step(self):
         # Handle user input
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -85,10 +81,6 @@ class Sokoban:
                 elif event.key == pygame.K_r:
                     return True
 
-        # configure this correctly communicate with agent.py
-        if not move:
-            return False, False, move
-        
         # Update display
         return self._update_ui()
 
@@ -117,17 +109,15 @@ class Sokoban:
                 pygame.draw.rect(self.display, WHITE,
                                  pygame.Rect(h_pt.x, h_pt.y, BLOCK_SIZE, BLOCK_SIZE))
 
-
         if num_holes == num_comp:
             text = font.render("Complete!", True, PINK)
-            self.display.blit(text, [self.w/2 - 100,self.w/2])
+            self.display.blit(text, [self.w / 2 - 100, self.w / 2])
             pygame.display.flip()
             time.sleep(3)
             return True
         # Update the screen
         pygame.display.flip()
         return False
-
 
     def _move(self, direction):
         x = self.player.x
@@ -204,68 +194,6 @@ class Sokoban:
             return True
         return False
 
-    def block_state(self):
-
-        res = []
-        x1 = self.player.x
-        y1 = self.player.y
-        # UP, DOWN, LEFT, RIGHT
-        for block in self.blocks:
-            x2 = block.x
-            y2 = block.y
-            res.append(y1 > y2)
-            res.append(y1 < y2)
-            res.append(x1 > x2)
-            res.append(x1 < x2)
-
-            # DANGER STATE
-            adjacent_dir = self.adjacent(x1, y1, x2, y2)
-
-            if not adjacent_dir:
-                res.append(False)
-                continue
-            
-            # CHECK HORIZONTAL DANGER MOVES
-            if y2 in (0, self.h - BLOCK_SIZE):
-                if adjacent_dir == Direction.LEFT and x2 == BLOCK_SIZE or adjacent_dir == Direction.RIGHT and x2 == self.w - BLOCK_SIZE * 2:
-                    res.append(True)
-            # CHECK VERTICAL DANGER MOVES
-            elif x2 in (0, self.w - BLOCK_SIZE):
-                if adjacent_dir == Direction.UP and y2 == BLOCK_SIZE or adjacent_dir == Direction.DOWN and y2 == self.h - BLOCK_SIZE * 2:
-                    res.append(True)
-            else:
-                res.append(False)
-                    
-        return res
-
-    def hole_state(self):
-
-        res = []
-        x1 = self.player.x
-        y1 = self.player.y
-        # UP, DOWN, LEFT, RIGHT
-        for hole in self.holes:
-            x2 = hole.x
-            y2 = hole.y
-            res.append(y1 > y2)
-            res.append(y1 < y2)
-            res.append(x1 > x2)
-            res.append(x1 < x2)
-        return res
-
-    def adjacent(self, x1, y1, x2, y2):
-        pt = Point(x1, y1)
-
-        if pt == Point(x2 - BLOCK_SIZE, y2):
-            return Direction.RIGHT
-        elif pt == Point(x2 + BLOCK_SIZE, y2):
-            return Direction.LEFT
-        elif pt == Point(x2, y2 - BLOCK_SIZE):
-            return Direction.DOWN
-        elif pt == Point(x2, y2 + BLOCK_SIZE):
-            return Direction.UP
-        
-        return None
 
 # Main program
 if __name__ == '__main__':
