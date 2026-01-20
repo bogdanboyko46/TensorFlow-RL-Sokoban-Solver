@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -34,7 +35,9 @@ class QTrainer:
 
     def train_step(self, state_old, final_move, reward, state_new, done):
         # Convert to tensors
+        state_old = np.array(state_old)
         state_old = torch.tensor(state_old, dtype=torch.float)
+        state_new = np.array(state_new)
         state_new = torch.tensor(state_new, dtype=torch.float)
         reward = torch.tensor(reward, dtype=torch.float)
         final_move = torch.tensor(final_move, dtype=torch.long)

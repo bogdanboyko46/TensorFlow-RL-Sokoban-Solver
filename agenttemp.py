@@ -3,7 +3,7 @@ import time
 import torch
 import random
 import numpy as np
-from sokobanbot import Sokoban
+from sokocopytemp import Sokoban
 from collections import deque
 from model import QTrainer, Linear_QNet
 
@@ -19,7 +19,7 @@ class Agent:
         self.epsilon = 0 # randomness
         self.gamma = 0.9 # cares about long term reward (very cool)
         self.memory = deque(maxlen=MAX_MEMORY) # popleft when memory is reached
-        self.model = Linear_QNet(28, 256, 4)
+        self.model = Linear_QNet(20, 256, 4)
         self.trainer = QTrainer(self.model, LR, self.gamma)
 
 
@@ -27,7 +27,7 @@ class Agent:
 
         # State array is as follows:
         """"
-        A ‘state’ array consisting of # boolean values (T, F): (4 + n*5 + m*4)
+        A ‘state’ array consisting of # boolean values (T, F): (4 + n*8)
 
         N = amount of blocks
         M = amount of holes
@@ -109,7 +109,7 @@ class Agent:
 
 
 def train():
-    steps_taken = []  # the # of steps the agent takes to win per game
+    steps_taken = [] # the # of steps the agent takes to win per game
     record = 10000000
     agent = Agent()
     game = Sokoban()
@@ -120,7 +120,7 @@ def train():
 
         # get move
         get_move = agent.get_action(state_old)
-
+                                
         # perform move and get state
         reward, game_over, game_win = game.play_step(get_move)
         state_new = agent.get_state(game)
@@ -131,6 +131,7 @@ def train():
         # remember
         agent.remember(state_old, get_move, reward, state_new, game_over)
 
+
         if game_over:
             if game_win:
                 if record == 10000000 or record > game.moves_made:
@@ -138,15 +139,18 @@ def train():
                     agent.model.save()
 
                 steps_taken.append(current_steps)
+                game.comp = True
             # train long term mem
             game.reset()
-            agent.train_long_memory()
+            agent.train_long_memory() 
 
             # reset current steps
             current_steps = 0
             agent.number_of_games += 1
 
-            print(f'Games: {agent.number_of_games}, Record: {record}')
+
+
+            print(f'Games: {agent.number_of_games}, Record: {record}, Completed: {len(steps_taken)}')
 
 if __name__ == '__main__':
     train()

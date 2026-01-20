@@ -33,10 +33,12 @@ PINK = (255, 0, 255)
 BLOCK_SIZE = 80
 
 class Sokoban:
-    def __init__(self, w=720, h=720):
+    def __init__(self, w=400, h=400):
         # Screen width and height
         self.w = w
         self.h = h
+        self.comp = False
+        self.moves_made = 0
         self.player = None
         self.blocks = None
         self.holes = None
@@ -49,22 +51,31 @@ class Sokoban:
         self.reset()
 
     def reset(self):
+        self.moves_made = 0
+        self.blocks = set()
+        self.holes = set()
+        self.in_hole = 0
+        if not self.comp:
+            self.player = Point(0, 0)
+            self.blocks.add(Point(1* BLOCK_SIZE, 1* BLOCK_SIZE))
+            self.blocks.add(Point(1* BLOCK_SIZE, 3* BLOCK_SIZE))
+            self.holes.add(Point(3* BLOCK_SIZE,3* BLOCK_SIZE))
+            self.holes.add(Point(3* BLOCK_SIZE,1* BLOCK_SIZE))
+            return
+
         x = random.randint(0, 8) * BLOCK_SIZE
         y = random.randint(0, 8) * BLOCK_SIZE
-        self.moves_made = 0
         self.player = Point(x, y)
-        self.in_hole = 0
-        self.blocks = set()
-        while len(self.blocks) < 3:
-            x = random.randint(1, 7) * BLOCK_SIZE
-            y = random.randint(1, 7) * BLOCK_SIZE
+
+        while len(self.blocks) < 2:
+            x = random.randint(1, 3) * BLOCK_SIZE
+            y = random.randint(1, 3) * BLOCK_SIZE
             if not Point(x, y) in self.blocks and Point(x, y) != self.player:
                 self.blocks.add(Point(x, y))
 
-        self.holes = set()
-        while len(self.holes) < 3:
-            x = random.randint(0, 8) * BLOCK_SIZE
-            y = random.randint(0, 8) * BLOCK_SIZE
+        while len(self.holes) < 2:
+            x = random.randint(1, 3) * BLOCK_SIZE
+            y = random.randint(1, 3) * BLOCK_SIZE
             if not Point(x, y) in self.holes and not Point(x, y) in self.blocks and Point(x, y) != self.player:
                 self.holes.add(Point(x, y))
         pass
@@ -73,10 +84,7 @@ class Sokoban:
         for block in self.blocks:
             if block in self.holes:
                 continue
-            if block in (Point(0, 0),
-                         Point(self.w - BLOCK_SIZE, 0),
-                         Point(0, self.h - BLOCK_SIZE),
-                         Point(self.w - BLOCK_SIZE, self.h - BLOCK_SIZE)):
+            if block.x == 0 or block.x == self.h - BLOCK_SIZE or block.y == 0 or block.y == self.w - BLOCK_SIZE:
                 return True
         return False
 
@@ -108,7 +116,6 @@ class Sokoban:
             idx = int(np.argmax(action))
             action = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT][idx]
 
-        self.moves_made += 1
 
         # get old block in hole state to compare after move is completed
         old_in_hole_ct = self.in_hole
@@ -123,18 +130,25 @@ class Sokoban:
         # initialize reward to -1, (time constraint) negative reward
         reward = -1
 
+        self.moves_made += 1
+
+        if self.moves_made >= 350:
+            reward -= 10
+            game_over = True
+            return reward, game_over, False
+
         # execute move from agent action
         if self._move(action):
-            reward -= 0.5
+            reward += 1
 
         # compare old and new in hole states
         if old_in_hole_ct > self.in_hole:
-            reward -= 10
+            reward -= 5
         elif old_in_hole_ct < self.in_hole:
             reward += 10
 
         # check if agent moved a block into an unmovable state
-        if self.unmovable_block_detect() or self.moves_made > 6000:
+        if self.unmovable_block_detect():
             reward -= 15
             game_over = True
             return reward, game_over, False
@@ -148,21 +162,14 @@ class Sokoban:
         # # compare old and new agent positions
         # if old_x == self.player.x and old_y == self.player.y:
         #     reward -= 5
+        adjacent_to_block = False
+        for block in self.blocks:
+            if self.adjacent(self.player.x, self.player.y, block.x, block.y):
+                adjacent_to_block = True
+                break
 
-        # adjacent_to_block = False
-        # for block in self.blocks:
-        #     if self.adjacent(self.player.x, self.player.y, block.x, block.y):
-        #         adjacent_to_block = True
-        #         break
-        #
-        # if adjacent_to_block:
-        #     reward += 2
-        #     self.frames_without_contact = 0
-        # else:
-        #     self.frames_without_contact += 1
-
-        # if self.frames_without_contact > 10:
-        #     reward -= 5
+        if adjacent_to_block:
+            reward += 2
 
         # update UI
         self._update_ui()
@@ -309,7 +316,7 @@ class Sokoban:
         x1 = self.player.x
         y1 = self.player.y
         # UP, DOWN, LEFT, RIGHT
-        for block in self.blocks:
+        for block in sorted(self.blocks, key=lambda p: (p.x, p.y)):
             x2 = block.x
             y2 = block.y
             res.append(y1 > y2)
@@ -324,7 +331,7 @@ class Sokoban:
         x1 = self.player.x
         y1 = self.player.y
         # UP, DOWN, LEFT, RIGHT
-        for hole in self.holes:
+        for hole in sorted(self.holes, key=lambda p: (p.x, p.y)):
             x2 = hole.x
             y2 = hole.y
             res.append(y1 > y2)
