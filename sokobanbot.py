@@ -71,6 +71,8 @@ class Sokoban:
 
     def unmovable_block_detect(self):
         for block in self.blocks:
+            if block in self.holes:
+                continue
             if block in (Point(0, 0),
                          Point(self.w - BLOCK_SIZE, 0),
                          Point(0, self.h - BLOCK_SIZE),
@@ -104,7 +106,8 @@ class Sokoban:
         # action is [up, down, left, right]
         if isinstance(action, (list, tuple, np.ndarray)):
             idx = int(np.argmax(action))
-            action = [Direction.RIGHT, Direction.LEFT, Direction.UP, Direction.DOWN][idx]
+            action = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT][idx]
+
 
         # get old block in hole state to compare after move is completed
         old_in_hole_ct = self.in_hole
@@ -112,14 +115,16 @@ class Sokoban:
         # get old position state to check if agent attempted to move a block into a wall, into another block, or attempted to move itself into a wall
         old_x, old_y = self.player.x, self.player.y
 
-        # execute move from agent action
-        self._move(action)
 
         # check if game is over and collect reward values
         game_over = False
 
         # initialize reward to -1, (time constraint) negative reward
         reward = -1
+
+        # execute move from agent action
+        if self._move(action):
+            reward += 2
 
         # compare old and new in hole states
         if old_in_hole_ct > self.in_hole:
@@ -143,18 +148,17 @@ class Sokoban:
         if old_x == self.player.x and old_y == self.player.y:
             reward -= 5
 
-        # check if agent is in contact with a block
-        # assume agent is not in contact with block, increment iterations
-        self.frames_without_contact += 1
-
+        adjacent_to_block = False
         for block in self.blocks:
-            # if adjacent() returns a non 'None' value, then it is adjacent with a block on the board
             if self.adjacent(self.player.x, self.player.y, block.x, block.y):
+                adjacent_to_block = True
                 break
-        else:
-            # will be reached if the break statement is reached, add a positive reward of 2 if in contact
+
+        if adjacent_to_block:
             reward += 2
-            self.frames_without_contact = 0 # reset back to zero since contact was achieved
+            self.frames_without_contact = 0
+        else:
+            self.frames_without_contact += 1
 
         if self.frames_without_contact > 10:
             reward -= 5
@@ -165,10 +169,11 @@ class Sokoban:
         # return
         return reward, game_over, False
 
+    # Moves the player, Returns True if a block is moved too
     def _move(self, direction):
         x = self.player.x
         y = self.player.y
-
+        moved_block = False
         if direction == Direction.RIGHT and self.can_move_right():
             if Point(x + BLOCK_SIZE, y) in self.blocks:
                 old_pos =  Point(x + BLOCK_SIZE, y)
@@ -179,6 +184,7 @@ class Sokoban:
                 self.blocks.add(new_pos)
                 if new_pos in self.holes:
                     self.in_hole += 1
+                moved_block = True
             x += BLOCK_SIZE
 
         elif direction == Direction.LEFT and self.can_move_left():
@@ -191,6 +197,7 @@ class Sokoban:
                 self.blocks.add(new_pos)
                 if new_pos in self.holes:
                     self.in_hole += 1
+                moved_block = True
             x -= BLOCK_SIZE
 
         elif direction == Direction.DOWN and self.can_move_down():
@@ -203,6 +210,7 @@ class Sokoban:
                 self.blocks.add(new_pos)
                 if new_pos in self.holes:
                     self.in_hole += 1
+                moved_block = True
             y += BLOCK_SIZE
 
         elif direction == Direction.UP and self.can_move_up():
@@ -215,9 +223,11 @@ class Sokoban:
                 self.blocks.add(new_pos)
                 if new_pos in self.holes:
                     self.in_hole += 1
+                moved_block = True
             y -= BLOCK_SIZE
 
         self.player = Point(x, y)
+        return moved_block
 
     def _update_ui(self):
         self.display.fill(BLACK)
