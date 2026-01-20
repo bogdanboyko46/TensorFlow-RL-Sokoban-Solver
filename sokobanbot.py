@@ -77,6 +77,20 @@ class Sokoban:
                 return True
         return False
 
+    def adjacent(self, x1, y1, x2, y2):
+        pt = Point(x1, y1)
+
+        if pt == Point(x2 - BLOCK_SIZE, y2):
+            return Direction.RIGHT
+        elif pt == Point(x2 + BLOCK_SIZE, y2):
+            return Direction.LEFT
+        elif pt == Point(x2, y2 - BLOCK_SIZE):
+            return Direction.DOWN
+        elif pt == Point(x2, y2 + BLOCK_SIZE):
+            return Direction.UP
+
+        return None
+
     def play_step(self, action):
         # TODO: return respective vars: reward, game_over, game_win
 
@@ -87,19 +101,24 @@ class Sokoban:
                 quit()
 
         # get old block in hole state to compare after move is completed
-        old_in_hold_ct = self.in_hole
+        old_in_hole_ct = self.in_hole
+
+        # get old position state to check if agent attempted to move a block into a wall, into another block, or attempted to move itself into a wall
+        old_x, old_y = self.player.x, self.player.y
 
         # execute move from agent action
         self._move(action)
 
         # check if game is over and collect reward values
         game_over = False
-        reward = 0
+
+        # initialize reward to -1, (time constraint) negative reward
+        reward = -1
 
         # compare old and new in hole states
-        if old_in_hold_ct > self.in_hole:
+        if old_in_hole_ct > self.in_hole:
             reward -= 10
-        elif old_in_hold_ct < self.in_hole:
+        elif old_in_hole_ct < self.in_hole:
             reward += 10
 
         # check if agent moved a block into an unmovable state
@@ -113,6 +132,21 @@ class Sokoban:
             reward += 15
             game_over = True
             return reward, game_over, True
+
+        # compare old and new agent positions
+        if old_x == self.player.x and old_y == self.player.y:
+            reward -= 5
+
+        # check if agent is in contact with a block, add negative reward if so
+        # assume the agent is not in contact with a block, add a negative reward of 3
+        reward -= 3
+        for block in self.blocks:
+            # if adjacent() returns a non 'None' value, then it is adjacent with a block on the board
+            if self.adjacent(self.player.x, self.player.y, block.x, block.y):
+                break
+        else:
+            # will be reached if the break statement is reached, add a positive reward of 1 if in contact
+            reward += 4
 
         # update UI
         self._update_ui()
@@ -246,20 +280,6 @@ class Sokoban:
                     return False
             return True
         return False
-
-    def adjacent(self, x1, y1, x2, y2):
-        pt = Point(x1, y1)
-
-        if pt == Point(x2 - BLOCK_SIZE, y2):
-            return Direction.RIGHT
-        elif pt == Point(x2 + BLOCK_SIZE, y2):
-            return Direction.LEFT
-        elif pt == Point(x2, y2 - BLOCK_SIZE):
-            return Direction.DOWN
-        elif pt == Point(x2, y2 + BLOCK_SIZE):
-            return Direction.UP
-
-        return None
 
     def block_state(self):
         res = []
