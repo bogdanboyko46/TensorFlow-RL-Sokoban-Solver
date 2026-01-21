@@ -45,8 +45,8 @@ class Sokoban:
         self.in_hole = 0
 
         # Initialize game window
-        self.display = pygame.display.set_mode((self.w, self.h))
-        pygame.display.set_caption('Sokoban')
+        # self.display = pygame.display.set_mode((self.w, self.h))
+        # pygame.display.set_caption('Sokoban')
 
         self.reset()
 
@@ -63,8 +63,8 @@ class Sokoban:
             self.holes.add(Point(3* BLOCK_SIZE,1* BLOCK_SIZE))
             return
 
-        x = random.randint(0, 8) * BLOCK_SIZE
-        y = random.randint(0, 8) * BLOCK_SIZE
+        x = random.randint(0, 4) * BLOCK_SIZE
+        y = random.randint(0, 4) * BLOCK_SIZE
         self.player = Point(x, y)
 
         while len(self.blocks) < 2:
@@ -128,7 +128,7 @@ class Sokoban:
         game_over = False
 
         # initialize reward to -1, (time constraint) negative reward
-        reward = -1
+        reward = -0.01
 
         self.moves_made += 1
 
@@ -139,7 +139,7 @@ class Sokoban:
 
         # execute move from agent action
         if self._move(action):
-            reward += 1
+            reward += 0
 
         # compare old and new in hole states
         if old_in_hole_ct > self.in_hole:
@@ -155,7 +155,7 @@ class Sokoban:
 
         # check if agent completed the game
         if self.in_hole == len(self.holes):
-            reward += 50
+            reward += 35
             game_over = True
             return reward, game_over, True
 
@@ -168,8 +168,8 @@ class Sokoban:
                 adjacent_to_block = True
                 break
 
-        if adjacent_to_block:
-            reward += 2
+        # if adjacent_to_block:
+        #     reward += 2
 
         # update UI
         self._update_ui()
@@ -238,6 +238,8 @@ class Sokoban:
         return moved_block
 
     def _update_ui(self):
+        if 1 == 1:
+            return
         self.display.fill(BLACK)
 
         p_pt = self.player
@@ -313,26 +315,23 @@ class Sokoban:
 
     def block_state(self):
         res = []
-        x1 = self.player.x
-        y1 = self.player.y
-        # UP, DOWN, LEFT, RIGHT
         for block in sorted(self.blocks, key=lambda p: (p.x, p.y)):
             x2 = block.x
             y2 = block.y
-            res.append(x2 - x1)
-            res.append(y2 - y1)
+            res.append(x2 / BLOCK_SIZE)
+            res.append(y2  / BLOCK_SIZE)
+            res.append(block in self.holes)
 
         return res
 
     def hole_state(self):
         res = []
-        x1 = self.player.x
-        y1 = self.player.y
-        # UP, DOWN, LEFT, RIGHT
         for hole in sorted(self.holes, key=lambda p: (p.x, p.y)):
             x2 = hole.x
             y2 = hole.y
-            res.append(x2 - x1)
-            res.append(y2 - y1)
+            res.append(x2 / BLOCK_SIZE)
+            res.append(y2  / BLOCK_SIZE)
 
         return res
+    def player_state(self):
+        return [self.player.x/BLOCK_SIZE, self.player.y/BLOCK_SIZE]

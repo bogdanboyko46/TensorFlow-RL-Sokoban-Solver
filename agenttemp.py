@@ -3,7 +3,7 @@ import time
 import torch
 import random
 import numpy as np
-from sokocopytemp import Sokoban
+from sokobannouitest import Sokoban
 from collections import deque
 from model import QTrainer, Linear_QNet
 
@@ -19,7 +19,7 @@ class Agent:
         self.epsilon = 0 # randomness
         self.gamma = 0.9 # cares about long term reward (very cool)
         self.memory = deque(maxlen=MAX_MEMORY) # popleft when memory is reached
-        self.model = Linear_QNet(12, 256, 4)
+        self.model = Linear_QNet(16, 256, 4)
         self.trainer = QTrainer(self.model, LR, self.gamma)
 
 
@@ -52,11 +52,14 @@ class Agent:
             game.can_move_left(),
             game.can_move_right()
         ]
+        state.extend(game.player_state())
         state.extend(game.block_state())
         state.extend(game.hole_state())
 
+        # print(state)
 
-        return np.array(state, dtype=int) # convert bools to np array, convert bools to ints
+
+        return np.array(state, dtype=np.float32) # convert bools to np array, convert bools to ints
 
     def remember(self, state, action, reward, next_state, game_over):
         self.memory.append((state, action, reward, next_state, game_over)) # pop left if MAX_MEMORY is reached
@@ -84,13 +87,13 @@ class Agent:
 
         # Update epsilon (exploration rate)
         # As the number of games increases, epsilon decreases
-        self.epsilon = max(0, 80 - self.number_of_games)
+        self.epsilon = max(0.1, 1.0 - self.number_of_games / 500)
 
         # Array denoting the move to be made, udlr
         final_move = [0, 0, 0, 0]
 
         # Decide whether to explore or exploit
-        if random.randint(0, 200) < self.epsilon:
+        if random.random() < self.epsilon:
             move = random.randint(0, 3)
         else:
             # Convert state to a PyTorch tensor
@@ -112,7 +115,7 @@ def train():
     steps_taken = [] # the # of steps the agent takes to win per game
     record = 10000000
     agent = Agent()
-    game = Sokoban()
+    game = Sokoban(use_unmovable_termination=False)
 
     while True:
         # get old state

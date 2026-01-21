@@ -27,19 +27,19 @@ class Agent:
 
         # State array is as follows:
         """"
-        A ‘state’ array consisting of # boolean values (T, F): (4 + n*5 + m*4)
+        A ‘state’ array consisting of # boolean values, and normalised float: (6 + n*4 + n*4)
 
-        N = amount of blocks
-        M = amount of holes
+        N = amount of blocks/ holes
 
 	    User ability to move:
 		    UP, DOWN, LEFT, RIGHT
+		USER position:
+		    X, Y
         
         Each block:
 		    Availability to user:
             UP, DOWN, LEFT, RIGHT
 
-        Danger value (when user is in contact with block and next to unmovable pos)
 
         Each hole:
 	        Availability of user:
@@ -56,7 +56,7 @@ class Agent:
         state.extend(game.hole_state())
 
 
-        return np.array(state, dtype=int) # convert bools to np array, convert bools to ints
+        return np.array(state, dtype=int) # convert bools and floats to np array,
 
     def remember(self, state, action, reward, next_state, game_over):
         self.memory.append((state, action, reward, next_state, game_over)) # pop left if MAX_MEMORY is reached
@@ -113,7 +113,7 @@ def train():
     record = 10000000
     agent = Agent()
     game = Sokoban()
-
+    current_steps = 0
     while True:
         # get old state
         state_old = agent.get_state(game)
@@ -130,7 +130,7 @@ def train():
 
         # remember
         agent.remember(state_old, get_move, reward, state_new, game_over)
-
+        current_steps += 1
         if game_over:
             if game_win:
                 if record == 10000000 or record > game.moves_made:

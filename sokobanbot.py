@@ -11,10 +11,10 @@ font = pygame.font.Font('arial.ttf', 25)
 
 # Enum for player movement directions
 class Direction(Enum):
-    RIGHT = 1
-    LEFT = 2
-    UP = 3
-    DOWN = 4
+    UP = 1
+    DOWN = 2
+    LEFT = 3
+    RIGHT = 4
 
 
 # Point structure to store x and y coordinates
