@@ -21,7 +21,7 @@ class Agent:
         self.number_of_games = 0
         self.epsilon = 1.0  # randomness
         self.epsilon_min = 0.05
-        self.epsilon_decay = 0.99995
+        self.epsilon_decay = 0.999995
 
         self.gamma = 0.9  # cares about long term reward (very cool)
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft when memory is reached
@@ -47,7 +47,7 @@ class Agent:
 
 
         Each hole:
-	        Availability of user:
+	        Availability to user:
 	        UP, DOWN, LEFT, RIGHT
 
         """
@@ -118,7 +118,7 @@ def train():
     total_reward = 0
     temp_moves = 0
 
-    while agent.number_of_games < 500:
+    while agent.number_of_games < 1500:
         # get old state
         state_old = agent.get_state(game)
 

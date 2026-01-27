@@ -34,7 +34,7 @@ PINK = (255, 0, 255)
 BLOCK_SIZE = 80
 
 class Sokoban:
-    def __init__(self, w=480, h=480):
+    def __init__(self, w=720, h=720):
         # Screen width and height
         self.w = w
         self.h = h
@@ -51,17 +51,28 @@ class Sokoban:
         self.reset()
 
     def reset(self):
-        x = random.randint(0, 2) * BLOCK_SIZE
-        y = random.randint(0, 2) * BLOCK_SIZE
+        x_p = random.randint(0, 8) * BLOCK_SIZE
+        y_p = random.randint(0, 8) * BLOCK_SIZE
         self.moves_made = 0
-        self.player = Point(x, y)
+        self.player = Point(x_p, y_p)
         self.in_hole = 0
         self.blocks = set()
         self.holes = set()
         self.paths = dict()
 
-        self.blocks.add(Point(BLOCK_SIZE * 2, 3 * BLOCK_SIZE))
-        self.holes.add(Point(BLOCK_SIZE * 3, BLOCK_SIZE * 2))
+        while len(self.blocks) < 1:
+            x = random.randint(0, 7) * BLOCK_SIZE
+            y = random.randint(0, 7) * BLOCK_SIZE
+
+            if Point(x, y) != self.player:
+                self.blocks.add(Point(x, y))
+
+        while len(self.holes) < 1:
+            x = random.randint(0, 8) * BLOCK_SIZE
+            y = random.randint(0, 8) * BLOCK_SIZE
+
+            if Point(x, y) != self.player and Point(x, y) not in self.blocks:
+                self.holes.add(Point(x, y))
 
         for block in self.blocks:
             self.paths[block] = dict()
@@ -91,8 +102,13 @@ class Sokoban:
         return 5 if closer_count > 0 else -1
 
 
-    def unmovable_block_detect(self):
+    def immovable_block_detect(self):
+        # create a dict denoting the number of blocks / holes in each border
+        block_ct_borders = [0, 0, 0, 0] # UP, DOWN, LEFT, RIGHT
+        hole_ct_borders = [0, 0, 0, 0] # UP, DOWN, LEFT, RIGHT
+
         for block in self.blocks:
+            # hole in occupied
             if block in self.holes:
                 continue
             if block in (Point(0, 0),
@@ -100,6 +116,39 @@ class Sokoban:
                          Point(0, self.h - BLOCK_SIZE),
                          Point(self.w - BLOCK_SIZE, self.h - BLOCK_SIZE)):
                 return True
+
+            # border presence check
+            if block.x == 0:
+                block_ct_borders[2] += 1
+            elif block.x == self.w - BLOCK_SIZE:
+                block_ct_borders[3] += 1
+            elif block.y == 0:
+                block_ct_borders[0] += 1
+            elif block.y == self.h - BLOCK_SIZE:
+                block_ct_borders[1] += 1
+
+            # if the block is within the top, bottom, left, or right borders where an unoccupied hole is not available on the same border, the game must end
+
+        # get the border count for each hole
+        for hole in self.holes:
+            # hole is occupied
+            if hole in self.blocks:
+                continue
+
+            if hole.x == 0:
+                hole_ct_borders[2] += 1
+            elif hole.x == self.w - BLOCK_SIZE:
+                hole_ct_borders[3] += 1
+            elif hole.y == 0:
+                hole_ct_borders[0] += 1
+            elif hole.y == self.h - BLOCK_SIZE:
+                hole_ct_borders[1] += 1
+
+        # compare arrays -> if the # of holes in each border >= corresponding index in hole_ct_borders, there is still a way to win
+        for i in range(0, len(block_ct_borders)):
+            if block_ct_borders[i] > hole_ct_borders[i]:
+                return True
+
         return False
 
 
@@ -134,13 +183,13 @@ class Sokoban:
 
         # check if agent completed the game
         if self.in_hole == len(self.holes):
-            reward += 50
+            reward += 200
             game_over = True
             return reward, game_over, True
 
-        # check if agent moved a block into an unmovable state
-        if self.unmovable_block_detect() or self.moves_made > 50:
-            reward -= 15
+        # check if agent moved a block into an immovable state
+        if self.immovable_block_detect() or self.moves_made > 150:
+            reward -= 5
             game_over = True
             return reward, game_over, False
 
