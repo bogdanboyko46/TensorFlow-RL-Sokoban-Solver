@@ -81,14 +81,22 @@ class Sokoban:
                 self.paths[block][hole] = (abs(block.x - hole.x) / BLOCK_SIZE) + (abs(block.y - hole.y) / BLOCK_SIZE)
 
     def replace_path(self, old_pos, new_pos):
+
+        # TODO: the paths dict is not suitable for multiple blocks and holes -> fix it
+
         # incremented / decremented based off if a block got closer or farther from each block
         closer_count = 0
         self.paths[new_pos] = dict()
+        changed_flg = False # temp var
 
         for hole in self.holes:
             old_dist = self.paths[old_pos][hole]
             new_dist = (abs(new_pos.x - hole.x) / BLOCK_SIZE) + (abs(new_pos.y - hole.y) / BLOCK_SIZE)
             closer_count += 1 if old_dist > new_dist else -1
+
+            # temp check
+            if new_dist != old_dist:
+                changed_flg = True
 
             # add path
             self.paths[new_pos][hole] = new_dist
@@ -97,9 +105,9 @@ class Sokoban:
         del self.paths[old_pos]
 
         if closer_count == 0:
-            return 0
+            return 15 if changed_flg else 0
 
-        return 5 if closer_count > 0 else -1
+        return 10 if closer_count >= 0 else -1
 
 
     def immovable_block_detect(self):
@@ -174,10 +182,17 @@ class Sokoban:
         # initialize reward to -1, (time constraint) negative reward
         reward = -0.5
 
+        # get old player states
+        old_x, old_y = self.player.x, self.player.y
+        old_in_hole = self.in_hole
+
         # execute move from agent action
         old_pos, new_pos = self._move(action)
 
-        if old_pos and new_pos:
+        if old_x == self.player.x and old_y == self.player.y:
+            reward -= 5
+
+        elif old_pos and new_pos:
             # update reward based off if the agent pushed a block closer to any of the holes
             reward += self.replace_path(old_pos, new_pos)
 
@@ -186,9 +201,14 @@ class Sokoban:
             reward += 200
             game_over = True
             return reward, game_over, True
+        elif self.in_hole != old_in_hole:
+            if self.in_hole > old_in_hole:
+                reward += 100
+            else:
+                reward -= 10
 
         # check if agent moved a block into an immovable state
-        if self.immovable_block_detect() or self.moves_made > 150:
+        if self.immovable_block_detect() or self.moves_made > 1600:
             reward -= 5
             game_over = True
             return reward, game_over, False
