@@ -41,8 +41,10 @@ class Sokoban:
         self.player = None
         self.blocks = None
         self.holes = None
+        self.moves_made = None
         self.in_hole = 0
         self.paths = None
+        self.savedstate = None
 
         # Initialize game window
         self.display = pygame.display.set_mode((self.w, self.h))
@@ -79,6 +81,18 @@ class Sokoban:
 
             for hole in self.holes:
                 self.paths[block][hole] = (abs(block.x - hole.x) / BLOCK_SIZE) + (abs(block.y - hole.y) / BLOCK_SIZE)
+
+        self.savedstate = (Point(self.player.x, self.player.y), self.blocks.copy(), self.holes.copy(), self.paths.copy())
+
+    def reload(self):
+        self.moves_made = 0
+        self.player = self.savedstate[0]
+        self.blocks = self.savedstate[1]
+        self.holes = self.savedstate[2]
+        self.paths = self.savedstate[3]
+        self.in_hole = 0
+
+
 
     def replace_path(self, old_pos, new_pos):
 

@@ -162,6 +162,7 @@ def train():
     load_checkpoint(agent) # load the checkpoint if exists
 
     game = Sokoban()
+    print(game.savedstate)
     total_reward = 0
     temp_moves = 0
 
@@ -198,9 +199,13 @@ def train():
                     agent.model.save()
 
                 print(f'Games: {agent.number_of_games}, Record: {record}')
+                game.reset()
+            else:
+                game.reload()
+                print(game.savedstate)
+
 
             # train long term mem
-            game.reset()
             agent.train_long_memory()
 
             # save the checkpoint every 10 moves
