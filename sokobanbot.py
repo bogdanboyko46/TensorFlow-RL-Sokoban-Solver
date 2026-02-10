@@ -60,14 +60,14 @@ class Sokoban:
         self.holes = set()
         self.paths = dict()
 
-        while len(self.blocks) < 1:
-            x = random.randint(0, 7) * BLOCK_SIZE
-            y = random.randint(0, 7) * BLOCK_SIZE
+        num_blocks = 1
 
-            if Point(x, y) != self.player:
-                self.blocks.add(Point(x, y))
+        # If that position isnt already in use
+        while len(self.blocks) < num_blocks:
+            x = random.randint(1, 6) * BLOCK_SIZE
+            y = random.randint(1, 6) * BLOCK_SIZE
 
-        while len(self.holes) < 1:
+        while len(self.holes) < num_blocks:
             x = random.randint(0, 8) * BLOCK_SIZE
             y = random.randint(0, 8) * BLOCK_SIZE
 

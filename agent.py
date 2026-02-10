@@ -8,6 +8,7 @@ from model import QTrainer, Linear_QNet
 import pickle
 import os
 import matplotlib.pyplot as plt
+import sokobanbot
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 128
@@ -27,7 +28,11 @@ class Agent:
 
         self.gamma = 0.9  # cares about long term reward (very cool)
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft when memory is reached
-        self.model = Linear_QNet(10, 256, 4)
+
+        temp_game = Sokoban()
+        mod_size = len(self.get_state(temp_game))
+        self.model = Linear_QNet(mod_size, 256, 4)
+
         self.trainer = QTrainer(self.model, LR, self.gamma)
 
     def get_state(self, game):
