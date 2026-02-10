@@ -43,7 +43,6 @@ class Sokoban:
         self.player = None
         self.blocks = None
         self.holes = None
-        self.moves_made = None
         self.in_hole = 0
         self.paths = None
 
@@ -53,103 +52,64 @@ class Sokoban:
 
         self.reset()
 
-    # used when initial game start / when blocks are pushed off a hole
-    def add_to_paths(self, block):
-        self.paths[block] = dict()
-        for hole in self.holes:
-
-            if hole in self.blocks:
-                continue
-
-            self.paths[block][hole] = (abs(block.x - hole.x) / BLOCK_SIZE) + (abs(block.y - hole.y) / BLOCK_SIZE)
-
-    def remove_from_paths(self, block):
-        if block in self.paths:
-            del self.paths[block]
-
-    # Resets the Sokoban game with all new positions
     def reset(self):
         x_p = random.randint(0, 8) * BLOCK_SIZE
         y_p = random.randint(0, 8) * BLOCK_SIZE
-        # Moves made, used to reset (if over 650 moves made), and to track records
         self.moves_made = 0
-        # Players starting position
         self.player = Point(x_p, y_p)
         self.in_hole = 0
         self.blocks = set()
         self.holes = set()
-        # Gets Manhattan distance of block and holes (for rewards)
         self.paths = dict()
 
-        num_blocks = 1;
+        while len(self.blocks) < 1:
+            x = random.randint(0, 7) * BLOCK_SIZE
+            y = random.randint(0, 7) * BLOCK_SIZE
 
-        while len(self.blocks) < num_blocks:
-            x = random.randint(1, 6) * BLOCK_SIZE
-            y = random.randint(1, 6) * BLOCK_SIZE
-
-            # If that position isn't already in use
             if Point(x, y) != self.player:
                 self.blocks.add(Point(x, y))
 
-        # Generates hole positions
-        while len(self.holes) < num_blocks:
+        while len(self.holes) < 1:
             x = random.randint(0, 8) * BLOCK_SIZE
             y = random.randint(0, 8) * BLOCK_SIZE
 
-            # If that position isn't already in use
             if Point(x, y) != self.player and Point(x, y) not in self.blocks:
                 self.holes.add(Point(x, y))
 
-        # Finds manhattan path distances
         for block in self.blocks:
-            self.add_to_paths(block)
+            self.paths[block] = dict()
+
+            for hole in self.holes:
+                self.paths[block][hole] = (abs(block.x - hole.x) / BLOCK_SIZE) + (abs(block.y - hole.y) / BLOCK_SIZE)
 
     def replace_path(self, old_pos, new_pos):
-        # if pushed into a hole stop tracking that block
-        if new_pos in self.holes:
-            self.remove_from_paths(old_pos)
-            return 0
 
-        if old_pos not in self.paths:
-            self.add_to_paths(old_pos)
+        # TODO: the paths dict is not suitable for multiple blocks and holes -> fix it
 
-        # recompute all distances for new_pos fresh
-        self.paths[new_pos] = {}
-
-        ct = 0
-        old_closest_hole = {"Point": None, "Distance": float("inf")}
-        new_closest_hole = {"Point": None, "Distance": float("inf")}
+        # incremented / decremented based off if a block got closer or farther from each block
+        closer_count = 0
+        self.paths[new_pos] = dict()
+        changed_flg = False # temp var
 
         for hole in self.holes:
-            if hole in self.blocks:
-                continue
-
-            # don't assume hole key exists for old_pos
-            old_dist = self.paths[old_pos].get(hole)
-            if old_dist is None:
-                old_dist = (abs(old_pos.x - hole.x) / BLOCK_SIZE) + (abs(old_pos.y - hole.y) / BLOCK_SIZE)
-                self.paths[old_pos][hole] = old_dist  # keep it consistent going forward
-
+            old_dist = self.paths[old_pos][hole]
             new_dist = (abs(new_pos.x - hole.x) / BLOCK_SIZE) + (abs(new_pos.y - hole.y) / BLOCK_SIZE)
+            closer_count += 1 if old_dist > new_dist else -1
 
-            ct += 1 if new_dist < old_dist else -1
+            # temp check
+            if new_dist != old_dist:
+                changed_flg = True
 
-            if old_dist < old_closest_hole["Distance"]:
-                old_closest_hole["Point"] = hole
-                old_closest_hole["Distance"] = old_dist
-
-            if new_dist < new_closest_hole["Distance"]:
-                new_closest_hole["Point"] = hole
-                new_closest_hole["Distance"] = new_dist
-
+            # add path
             self.paths[new_pos][hole] = new_dist
 
-        # remove old_pos mapping
-        self.remove_from_paths(old_pos)
+        # delete old path
+        del self.paths[old_pos]
 
-        if ct == 0 and old_closest_hole["Point"] == new_closest_hole["Point"]:
-            return 10
-        return 10 if ct > 0 else -1
+        if closer_count == 0:
+            return 15 if changed_flg else 0
+
+        return 10 if closer_count >= 0 else -1
 
 
     def immovable_block_detect(self):
@@ -204,7 +164,6 @@ class Sokoban:
 
     def play_step(self, action):
         # TODO: return respective vars: reward, game_over, game_win
-        #time.sleep(.05)
 
         # Handle user input
         for event in pygame.event.get():
@@ -217,8 +176,8 @@ class Sokoban:
             idx = int(np.argmax(action))
             action = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT][idx]
 
-
         self.moves_made += 1
+
         # check if game is over and collect reward values
         game_over = False
 
@@ -231,13 +190,11 @@ class Sokoban:
 
         # execute move from agent action
         old_pos, new_pos = self._move(action)
-        self._update_ui()
 
         if old_x == self.player.x and old_y == self.player.y:
             reward -= 5
 
         elif old_pos and new_pos:
-
             # update reward based off if the agent pushed a block closer to any of the holes
             reward += self.replace_path(old_pos, new_pos)
 
@@ -248,21 +205,17 @@ class Sokoban:
             return reward, game_over, True
         elif self.in_hole != old_in_hole:
             if self.in_hole > old_in_hole:
-
-                self.moves_made = 0
                 reward += 100
-
             else:
-
                 reward -= 10
 
         # check if agent moved a block into an immovable state
-        if self.immovable_block_detect() or self.moves_made > 5000:
+        if self.immovable_block_detect() or self.moves_made > 1600:
             reward -= 5
             game_over = True
-            self._update_ui()
-            time.sleep(0.2)
             return reward, game_over, False
+
+        self._update_ui()
 
         # return
         return reward, game_over, False
@@ -284,6 +237,7 @@ class Sokoban:
                 self.blocks.add(new_pos)
                 if new_pos in self.holes:
                     self.in_hole += 1
+                moved_block = True
             x += BLOCK_SIZE
 
         elif direction == Direction.LEFT and self.can_move_left():
@@ -296,6 +250,7 @@ class Sokoban:
                 self.blocks.add(new_pos)
                 if new_pos in self.holes:
                     self.in_hole += 1
+                moved_block = True
             x -= BLOCK_SIZE
 
         elif direction == Direction.DOWN and self.can_move_down():
@@ -308,6 +263,7 @@ class Sokoban:
                 self.blocks.add(new_pos)
                 if new_pos in self.holes:
                     self.in_hole += 1
+                moved_block = True
             y += BLOCK_SIZE
 
         elif direction == Direction.UP and self.can_move_up():
@@ -328,9 +284,6 @@ class Sokoban:
     def _update_ui(self):
         self.display.fill(BLACK)
 
-        moves_str = f"{self.moves_made}"
-        text = font.render(moves_str, True, PINK)
-        self.display.blit(text, [self.w - self.w/10, 30])
         p_pt = self.player
         pygame.draw.rect(self.display, BLUE,
                          pygame.Rect(p_pt.x, p_pt.y, BLOCK_SIZE, BLOCK_SIZE))
@@ -351,6 +304,7 @@ class Sokoban:
 
         # Update the screen
         pygame.display.flip()
+        pass
 
     def can_move_right(self) -> bool:
         x = self.player.x
@@ -384,7 +338,7 @@ class Sokoban:
             new_y = y + BLOCK_SIZE
             if Point(x, new_y) in self.blocks:
                 # Checks if block cant be pushed (out of bounds, or another block to blocks down)
-                if new_y + BLOCK_SIZE >= self.h or Point(x, new_y + BLOCK_SIZE) in self.blocks:
+                if new_y + BLOCK_SIZE >= self.w or Point(x, new_y + BLOCK_SIZE) in self.blocks:
                     return False
             return True
         return False

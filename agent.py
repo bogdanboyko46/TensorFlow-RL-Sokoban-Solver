@@ -10,10 +10,14 @@ from model import QTrainer, Linear_QNet
 import pickle
 import os
 import matplotlib.pyplot as plt
+import sokobanbot
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 128
 LR = 0.001  # learning rate
+
+CKPT_PATH = "agent_checkpoint.pth"
+MEM_PATH = "replay_memory.pkl"
 
 class Agent:
 
@@ -22,14 +26,11 @@ class Agent:
         self.number_of_games = 0
         self.epsilon = 1.0  # randomness
         self.epsilon_min = 0.05
-        self.epsilon_decay = 0.9999995
+        self.epsilon_decay = 0.999995
 
         self.gamma = 0.9  # cares about long term reward (very cool)
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft when memory is reached
-
-        temp_game = Sokoban()
-        mod_size = len(self.get_state(temp_game))
-        self.model = Linear_QNet(mod_size, 256, 4)
+        self.model = Linear_QNet(10, 256, 4)
         self.trainer = QTrainer(self.model, LR, self.gamma)
 
     def get_state(self, game):
@@ -112,14 +113,62 @@ class Agent:
         final_move[move] = 1
         return final_move
 
+
+def load_replay_memory(path: str, max_memory: int) -> deque:
+    if not os.path.exists(path):
+        return deque(maxlen=max_memory)
+
+    try:
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+        # data could be a list OR a deque; wrap it to enforce maxlen
+        return deque(data, maxlen=max_memory)
+    except (pickle.UnpicklingError, EOFError, OSError):
+        return deque(maxlen=max_memory)
+
+
+def save_replay_memory(memory: deque, path: str) -> None:
+    # Save as list for robustness; reconstruct deque(maxlen=...) on load
+    with open(path, "wb") as f:
+        pickle.dump(list(memory), f)
+
+
+def save_checkpoint(agent: Agent, ckpt_path: str = CKPT_PATH, mem_path: str = MEM_PATH) -> None:
+    checkpoint = {
+        "model_state": agent.model.state_dict(),
+        "optimizer_state": agent.trainer.optimizer.state_dict(),
+        "epsilon": agent.epsilon,
+        "number_of_games": agent.number_of_games,
+        "max_memory": MAX_MEMORY,
+    }
+    torch.save(checkpoint, ckpt_path)
+    save_replay_memory(agent.memory, mem_path)
+
+
+def load_checkpoint(agent: Agent, ckpt_path: str = CKPT_PATH, mem_path: str = MEM_PATH) -> None:
+    # Load model/optimizer/metadata if present
+    if os.path.exists(ckpt_path):
+        checkpoint = torch.load(ckpt_path, map_location="cpu")
+        agent.model.load_state_dict(checkpoint["model_state"])
+        agent.trainer.optimizer.load_state_dict(checkpoint["optimizer_state"])
+        agent.epsilon = float(checkpoint.get("epsilon", agent.epsilon))
+        agent.number_of_games = int(checkpoint.get("number_of_games", agent.number_of_games))
+
+    # Load replay memory if present (independent of checkpoint)
+    agent.memory = load_replay_memory(mem_path, MAX_MEMORY)
+
 def train():
     rewards = []
     record = 10_000_000
     agent = Agent()
 
+    load_checkpoint(agent) # load the checkpoint if exists
+
     game = Sokoban()
     total_reward = 0
     temp_moves = 0
+
+    SAVE_EVERY = 10
 
     while agent.number_of_games < 650:
         # get old state
@@ -143,6 +192,7 @@ def train():
 
         if game_over:
             if game_win:
+
                 # allow the bot to learn more
                 agent.number_of_games += 1
 
@@ -152,13 +202,19 @@ def train():
 
                 print(f'Games: {agent.number_of_games}, Record: {record}')
 
-            game.reset()
-
             # train long term mem
+            game.reset()
             agent.train_long_memory()
+
+            # save the checkpoint every 10 moves
+            if agent.number_of_games % SAVE_EVERY == 0:
+                save_checkpoint(agent)
 
             rewards.append(total_reward)
             temp_moves = 0
+
+    # final save
+    save_checkpoint(agent)
 
     game_number = []
     for i in range(len(rewards)):
