@@ -123,7 +123,7 @@ def train():
     total_reward = 0
     temp_moves = 0
 
-    while agent.number_of_games < 650:
+    while agent.number_of_games < 50:
         # get old state
         state_old = agent.get_state(game)
 
