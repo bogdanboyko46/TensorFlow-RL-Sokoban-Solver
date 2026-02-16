@@ -149,10 +149,10 @@ class Sokoban:
                 self.paths[block][old_pos] = abs(block.x - old_pos.x) / BLOCK_SIZE + abs(block.y - old_pos.y) / BLOCK_SIZE
 
             print("PUSHED OFF HOLE")
-            return -20
+            return -50
 
-        tot_reward = 0
 
+        closest_longest_distances = [None, None]
         # if none of the above conditions are true, then we will proceed with the dynamic reward system
         self.paths[new_pos] = dict()
 
@@ -173,12 +173,21 @@ class Sokoban:
             The negative reward of -1 simply based off the conditions in old/new distances creates a conflict when dealing with multiple blocks/holes
             If a block is close to a hole but the tot reward is net negative due to a large amt of holes, it may create redundancy
             """
-            tot_reward += (7 * self.tot_block_ct) / new_dist if new_dist < old_dist else -1
+            if new_dist < old_dist:
+                if closest_longest_distances[0]:
+                    closest_longest_distances[0] = min(closest_longest_distances[0], new_dist)
+                else:
+                    closest_longest_distances[0] = new_dist
+            else:
+                if closest_longest_distances[1]:
+                    closest_longest_distances[1] = max(closest_longest_distances[1], new_dist)
+                else:
+                    closest_longest_distances[1] = new_dist
 
         # delete the old block's positions
         del self.paths[old_pos]
 
-        return tot_reward
+        return self.tot_block_ct * 3 / closest_longest_distances[0] if closest_longest_distances[0] else closest_longest_distances[1] / self.tot_block_ct
 
     def immovable_block_detect(self):
         # create a dict denoting the number of blocks / holes in each border
