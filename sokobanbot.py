@@ -68,7 +68,7 @@ class Sokoban:
         self.holes = set()
         self.paths = dict()
 
-        while len(self.blocks) < 2:
+        while len(self.blocks) < 1:
             x = random.randint(0, 7) * BLOCK_SIZE
             y = random.randint(0, 7) * BLOCK_SIZE
 
@@ -77,7 +77,7 @@ class Sokoban:
 
         self.tot_block_ct = len(self.blocks)
 
-        while len(self.holes) < 2:
+        while len(self.holes) < 1:
             x = random.randint(0, 8) * BLOCK_SIZE
             y = random.randint(0, 8) * BLOCK_SIZE
 
@@ -128,7 +128,7 @@ class Sokoban:
                 del self.paths[block][new_pos]
 
             print("PUSHED INTO HOLE!")
-            return 35
+            return 50
 
         elif old_in_hole > self.in_hole:
             # a block was pushed off a hole, add the block and the previously paired hole to "paths"
@@ -152,7 +152,7 @@ class Sokoban:
             return -50
 
 
-        closest_longest_distances = [None, None]
+        closest_dist_reached, longest_dist_reached = None, None
         # if none of the above conditions are true, then we will proceed with the dynamic reward system
         self.paths[new_pos] = dict()
 
@@ -174,20 +174,15 @@ class Sokoban:
             If a block is close to a hole but the tot reward is net negative due to a large amt of holes, it may create redundancy
             """
             if new_dist < old_dist:
-                if closest_longest_distances[0]:
-                    closest_longest_distances[0] = min(closest_longest_distances[0], new_dist)
-                else:
-                    closest_longest_distances[0] = new_dist
+                # a closer distance has been acheived
+                closest_dist_reached = min(7 if not closest_dist_reached else closest_dist_reached, new_dist)
             else:
-                if closest_longest_distances[1]:
-                    closest_longest_distances[1] = max(closest_longest_distances[1], new_dist)
-                else:
-                    closest_longest_distances[1] = new_dist
+                longest_dist_reached = max(1 if not longest_dist_reached else longest_dist_reached, new_dist)
 
         # delete the old block's positions
         del self.paths[old_pos]
 
-        return self.tot_block_ct * 3 / closest_longest_distances[0] if closest_longest_distances[0] else closest_longest_distances[1] / self.tot_block_ct
+        return self.tot_block_ct * 3 / closest_dist_reached if closest_dist_reached else longest_dist_reached / self.tot_block_ct
 
     def immovable_block_detect(self):
         # create a dict denoting the number of blocks / holes in each border
