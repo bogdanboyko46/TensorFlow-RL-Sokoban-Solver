@@ -2,16 +2,20 @@ import time
 import torch
 import random
 import numpy as np
+
+import sokobanbot
 from sokobanbot import Sokoban
 from collections import deque
 from model import QTrainer, Linear_QNet
 import pickle
 import os
 import matplotlib.pyplot as plt
+import sokobanbot
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 128
 LR = 0.001  # learning rate
+
 
 class Agent:
 
@@ -20,11 +24,11 @@ class Agent:
         self.number_of_games = 0
         self.epsilon = 1.0  # randomness
         self.epsilon_min = 0.05
-        self.epsilon_decay = 0.9999995
+        self.epsilon_decay = 0.999995
 
         self.gamma = 0.9  # cares about long term reward (very cool)
         self.memory = deque(maxlen=MAX_MEMORY)  # popleft when memory is reached
-        self.model = Linear_QNet(14, 256, 4)
+        self.model = Linear_QNet(10, 256, 4)
         self.trainer = QTrainer(self.model, LR, self.gamma)
 
     def get_state(self, game):
@@ -107,6 +111,7 @@ class Agent:
         final_move[move] = 1
         return final_move
 
+
 def train():
     rewards = []
     record = 10_000_000
@@ -116,7 +121,7 @@ def train():
     total_reward = 0
     temp_moves = 0
 
-    while agent.number_of_games < 650:
+    while agent.number_of_games < 500:
         # get old state
         state_old = agent.get_state(game)
 
@@ -138,6 +143,7 @@ def train():
 
         if game_over:
             if game_win:
+
                 # allow the bot to learn more
                 agent.number_of_games += 1
 
@@ -147,9 +153,8 @@ def train():
 
                 print(f'Games: {agent.number_of_games}, Record: {record}')
 
-            game.reset()
-
             # train long term mem
+            game.reset()
             agent.train_long_memory()
 
             rewards.append(total_reward)
