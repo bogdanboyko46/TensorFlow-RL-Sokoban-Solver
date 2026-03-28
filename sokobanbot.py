@@ -83,6 +83,7 @@ class Sokoban:
         self.blocks = set()
         self.holes = set()
         self.paths = dict()
+        self.total_reward = 0
 
         while len(self.blocks) < self.num_objects:
             x = random.randint(1, self.grid_width-2) * BLOCK_SIZE
@@ -281,12 +282,6 @@ class Sokoban:
         # execute move from agent action, moves block
         old_pushed_block_pos, new_pushed_block_pos = self._move(action)
 
-
-        # if old_pushed_block_pos and new_pushed_block_pos:
-        #     reward += self.update_paths(old_pushed_block_pos, new_pushed_block_pos, old_block_hole_pairs)
-        #
-
-
         # check if agent completed the game
         if self.in_hole == len(self.holes):
             reward += 200
@@ -367,6 +362,12 @@ class Sokoban:
 
     def _update_ui(self):
         self.display.fill(BLACK)
+        if self.total_reward > 0:
+            text = font.render("Total Reward : " + str(self.total_reward), True, GREEN)
+        else:
+            text = font.render("Total Reward : " + str(self.total_reward), True, RED)
+
+        self.display.blit(text, [0, 0])
 
         p_pt = self.player
         pygame.draw.rect(self.display, BLUE,
