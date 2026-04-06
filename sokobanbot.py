@@ -121,7 +121,7 @@ class Sokoban:
         # delete the old block's positions
         del self.paths[old_pos]
 
-        return 3/closest_dist_reached if closest_dist_reached else longest_dist_reached
+        return 5/closest_dist_reached if closest_dist_reached else longest_dist_reached
 
     def immovable_block_detect(self):
         # create a dict denoting the number of blocks / holes in each border
