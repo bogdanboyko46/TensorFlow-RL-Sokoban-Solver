@@ -46,7 +46,6 @@ class Sokoban:
         self.in_hole = 0
         self.paths = None
         self.tot_block_ct = 0
-        self.block_hole_pairs = None
 
         # Initialize game window
         self.display = pygame.display.set_mode((self.w, self.h))
@@ -61,11 +60,10 @@ class Sokoban:
         x_p = random.randint(0, 8) * BLOCK_SIZE
         y_p = random.randint(0, 8) * BLOCK_SIZE
         self.moves_made = 0
-        self.block_hole_pairs = set()
         self.player = Point(x_p, y_p)
         self.in_hole = 0
-        self.blocks = set()
-        self.holes = set()
+        self.blocks = []
+        self.holes = []
         self.paths = dict()
 
         while len(self.blocks) < 1:
@@ -73,7 +71,7 @@ class Sokoban:
             y = random.randint(0, 7) * BLOCK_SIZE
 
             if Point(x, y) != self.player:
-                self.blocks.add(Point(x, y))
+                self.blocks.append(Point(x, y))
 
         self.tot_block_ct = len(self.blocks)
 
@@ -82,7 +80,7 @@ class Sokoban:
             y = random.randint(0, 8) * BLOCK_SIZE
 
             if Point(x, y) != self.player and Point(x, y) not in self.blocks:
-                self.holes.add(Point(x, y))
+                self.holes.append(Point(x, y))
 
         for block in self.blocks:
             self.paths[block] = dict()
@@ -90,77 +88,14 @@ class Sokoban:
             for hole in self.holes:
                 self.paths[block][hole] = abs(block.x - hole.x) / BLOCK_SIZE + abs(block.y - hole.y) / BLOCK_SIZE
 
-    def update_paths(self, old_pos, new_pos, old_in_hole):
+    def update_paths(self, old_pos, new_pos):
 
-        """
-        1. Check if the number of block-hole pairs changed. If so, update tot_reward, add block and hole to dict
-        2. If the above condition didn't occur, update paths and return reward based off move made
-        """
-
-        # NEW: Block pushed from one hole to another (net in_hole change is 0)
-        if old_in_hole == self.in_hole and old_pos in self.block_hole_pairs and new_pos in self.holes:
-            self.block_hole_pairs.remove(old_pos)
-            self.block_hole_pairs.add(new_pos)
-
-            # hole at old_pos is now free
-            for block in self.paths:
-                self.paths[block][old_pos] = abs(block.x - old_pos.x) / BLOCK_SIZE + abs(
-                    block.y - old_pos.y) / BLOCK_SIZE
-
-            # hole at new_pos is now occupied
-            for block in self.paths:
-                if new_pos in self.paths[block]:
-                    del self.paths[block][new_pos]
-
-            print("PUSHED FROM HOLE TO HOLE!")
-            return 0
-
-        if old_in_hole < self.in_hole:
-
-            self.block_hole_pairs.add(new_pos)
-
-            # delete the old block's positions
-            del self.paths[old_pos]
-
-            # a block was pushed into a hole, delete the hole's dist from each block to essentially ignore it
-            for block in self.paths:
-
-                del self.paths[block][new_pos]
-
-            print("PUSHED INTO HOLE!")
-            return 50
-
-        elif old_in_hole > self.in_hole:
-            # a block was pushed off a hole, add the block and the previously paired hole to "paths"
-
-            self.block_hole_pairs.remove(old_pos)
-            self.paths[new_pos] = dict()
-
-            for hole in self.holes:
-
-                # skip hole if its occupied by a hole
-                if self.paired(hole):
-                    continue
-
-                self.paths[new_pos][hole] = abs(new_pos.x - hole.x) / BLOCK_SIZE + abs(new_pos.y - hole.y) / BLOCK_SIZE
-
-            for block in self.paths:
-
-                self.paths[block][old_pos] = abs(block.x - old_pos.x) / BLOCK_SIZE + abs(block.y - old_pos.y) / BLOCK_SIZE
-
-            print("PUSHED OFF HOLE")
-            return -50
-
+        self.paths[new_pos] = dict()
 
         closest_dist_reached, longest_dist_reached = None, None
         # if none of the above conditions are true, then we will proceed with the dynamic reward system
-        self.paths[new_pos] = dict()
 
         for hole in self.holes:
-
-            # skip hole if occupied by block
-            if self.paired(hole):
-                continue
 
             old_dist = self.paths[old_pos][hole]
             new_dist = abs(new_pos.x - hole.x) / BLOCK_SIZE + abs(new_pos.y - hole.y) / BLOCK_SIZE
@@ -173,6 +108,10 @@ class Sokoban:
             The negative reward of -1 simply based off the conditions in old/new distances creates a conflict when dealing with multiple blocks/holes
             If a block is close to a hole but the tot reward is net negative due to a large amt of holes, it may create redundancy
             """
+
+            if new_dist == 0:
+                return 50
+
             if new_dist < old_dist:
                 # a closer distance has been acheived
                 closest_dist_reached = min(7 if not closest_dist_reached else closest_dist_reached, new_dist)
@@ -182,7 +121,7 @@ class Sokoban:
         # delete the old block's positions
         del self.paths[old_pos]
 
-        return self.tot_block_ct * 3 / closest_dist_reached if closest_dist_reached else longest_dist_reached / self.tot_block_ct
+        return 3/closest_dist_reached if closest_dist_reached else longest_dist_reached
 
     def immovable_block_detect(self):
         # create a dict denoting the number of blocks / holes in each border
@@ -257,20 +196,19 @@ class Sokoban:
 
         # get old player states
         old_x, old_y = self.player.x, self.player.y
-        old_block_hole_pairs = self.in_hole
 
         # execute move from agent action
         old_pushed_block_pos, new_pushed_block_pos = self._move(action)
 
         if old_pushed_block_pos and new_pushed_block_pos:
-            reward += self.update_paths(old_pushed_block_pos, new_pushed_block_pos, old_block_hole_pairs)
+            reward += self.update_paths(old_pushed_block_pos, new_pushed_block_pos)
 
         elif old_x == self.player.x and old_y == self.player.y:
             reward -= 5
 
         # check if agent completed the game
         if self.in_hole == len(self.holes):
-            reward += 200
+            reward += 300
             game_over = True
             return reward, game_over, True
 
@@ -337,7 +275,7 @@ class Sokoban:
 
         if old_pushed_block_pos and new_pushed_block_pos:
             self.blocks.remove(old_pushed_block_pos)
-            self.blocks.add(new_pushed_block_pos)
+            self.blocks.append(new_pushed_block_pos)
 
         return old_pushed_block_pos, new_pushed_block_pos
 
